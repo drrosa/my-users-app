@@ -1,5 +1,24 @@
 require "sqlite3"
 
+class Database
+    attr_reader :sqlite_db
+
+    def initialize
+        @sqlite_db ||= SQLite3::Database.new "db.sql" 
+        query = <<~SQL
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            firstname VARCHAR(255),
+            lastname VARCHAR(255),
+            age INTEGER,
+            password VARCHAR(255),
+            email VARCHAR(255)
+        );
+        SQL
+        @sqlite_db.execute(query)
+    end
+end
+
 class User
     attr_accessor :id, :firstname, :lastname, :age, :email
 
@@ -12,23 +31,12 @@ class User
     end
 
     def self.create(user_info)
-        @DB = SQLite3::Database.new "db.sql"
-        query = <<~SQL
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            firstname VARCHAR(255),
-            lastname VARCHAR(255),
-            age INTEGER,
-            password VARCHAR(255),
-            email VARCHAR(255)
-            )
-        SQL
-        @DB.execute(query)
-        user = User.new 0, *user_info.values
+        @DB = Database.new.sqlite_db
         query = <<~SQL
             INSERT INTO users (firstname, lastname, age, password, email)
             VALUES (?, ?, ?, ?, ?)
         SQL
+        user = User.new 0, *user_info.values
         @DB.execute(query, user_info.values)
         user.id = @DB.last_insert_row_id
         return user
@@ -55,7 +63,7 @@ class User
           WHERE id = ?
         SQL
         
-        @DB.execute(query, value, user_id)
+        @DB.execute(query, [value, user_id])
         user = find(user_id)
         return user
     end
@@ -66,7 +74,6 @@ class User
             FROM users
         SQL
 
-        
         users = {}
         @DB.execute(query).each do |row|
             
