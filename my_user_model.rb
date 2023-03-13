@@ -1,12 +1,15 @@
 require "sqlite3"
 
+$db_name = "db.sql" 
+$table_name = "users"
+
 class Database
     attr_reader :sqlite_db
 
     def initialize
-        @sqlite_db ||= SQLite3::Database.new "db.sql" 
+        @sqlite_db ||= SQLite3::Database.new $db_name
         query = <<~SQL
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS #{$table_name} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             firstname VARCHAR(255),
             lastname VARCHAR(255),
@@ -20,20 +23,35 @@ class Database
 end
 
 class User
-    attr_accessor :id, :firstname, :lastname, :age, :email
+    attr_accessor :id, :firstname, :lastname, :age, :password, :email
 
     def initialize(id, firstname, lastname, age, password, email)
         @id = id
         @firstname = firstname
         @lastname = lastname
-        @age = age
+        @age = age.to_i
+        @password = password
         @email = email
+    end
+
+    def inspect
+        "{id: #{@id}, firstname: #{@firstname}, :lastname #{@lastname}, age: #{@age}, password: #{@password}, email:#{@email}}"
+    end
+
+    def self.to_hash(user)
+        user = {
+            id: user.id,
+            firstname: user.firstname,
+            lastname: user.lastname,
+            age: user.age,
+            email: user.email
+        }
     end
 
     def self.create(user_info)
         @DB = Database.new.sqlite_db
         query = <<~SQL
-            INSERT INTO users (firstname, lastname, age, password, email)
+            INSERT INTO #{$table_name} (firstname, lastname, age, password, email)
             VALUES (?, ?, ?, ?, ?)
         SQL
         user = User.new 0, *user_info.values
@@ -43,57 +61,53 @@ class User
     end
 
     def self.find(user_id)
+        @DB ||= Database.new.sqlite_db
         query = <<~SQL
             SELECT *
-            FROM users
+            FROM #{$table_name}
             WHERE id = ?
         SQL
-        user_info = @DB.execute(query, user_id).first
-        user = User.new *user_info
-        return user
+        return nil unless (rows = @DB.execute(query, user_id)).any?
+        return User.new *rows.first
     end
 
     def self.update(user_id, attribute, value)
+        @DB ||= Database.new.sqlite_db
         user = find(user_id)
         return nil unless user
         
         query = <<~SQL
-          UPDATE users
+          UPDATE #{$table_name}
           SET #{attribute} = ?
           WHERE id = ?
         SQL
         
         @DB.execute(query, [value, user_id])
-        user = find(user_id)
+        attribute = "@" + attribute.to_s
+        user.instance_variable_set(attribute, value)
         return user
     end
 
     def self.all
+        @DB ||= Database.new.sqlite_db
         query = <<~SQL
             SELECT *
-            FROM users
+            FROM #{$table_name}
         SQL
 
-        users = {}
+        users = []
         @DB.execute(query).each do |row|
-            
-            user = {
-                id: row[0],
-                firstname: row[1],
-                lastname: row[2],
-                age: row[3],
-                password: row[4],
-                email: row[5]
-            }
-            users[row[0]] = user
+            user = User.new(*row)
+            users << user
         end
         return users
     end
 
     def self.destroy(user_id)
+        @DB ||= Database.new.sqlite_db
         query = <<~SQL
             DELETE
-            FROM users
+            FROM #{$table_name}
             WHERE id=?
         SQL
         @DB.execute(query, user_id)
