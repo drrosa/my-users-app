@@ -3,9 +3,12 @@ require "sqlite3"
 $db_name = "db.sql" 
 $table_name = "users"
 
+# Define database class to manage SQLite database
 class Database
     attr_reader :sqlite_db
 
+    # Initialize a new SQLite3 database and
+    # create a new users table if it doesn't exist
     def initialize
         @sqlite_db ||= SQLite3::Database.new $db_name
         query = <<~SQL
@@ -22,9 +25,11 @@ class Database
     end
 end
 
+# Define the User class to interact with the users table in the SQLite database
 class User
     attr_accessor :id, :firstname, :lastname, :age, :password, :email
 
+    # Initialize a new User object with the given parameters
     def initialize(id, firstname, lastname, age, password, email)
         @id = id
         @firstname = firstname
@@ -34,10 +39,12 @@ class User
         @email = email
     end
 
+    # Define a custom inspect method to pretty-print User objects
     def inspect
         "{id: #{@id}, firstname: #{@firstname}, :lastname #{@lastname}, age: #{@age}, password: #{@password}, email:#{@email}}"
     end
 
+    # Convert a User object to a hash
     def self.to_hash(user)
         user = {
             id: user.id,
@@ -48,6 +55,8 @@ class User
         }
     end
 
+    # Create a new user in the database with the given user_info hash
+    # and return it as a User object
     def self.create(user_info)
         @DB = Database.new.sqlite_db
         query = <<~SQL
@@ -60,6 +69,8 @@ class User
         return user
     end
 
+    # Find a user in the database with the given user_id
+    # and return it as a User object
     def self.find(user_id)
         @DB ||= Database.new.sqlite_db
         query = <<~SQL
@@ -71,6 +82,8 @@ class User
         return User.new *rows.first
     end
 
+    # Update a user in the database with the given user_id and attribute/value pair
+    # and return the User object
     def self.update(user_id, attribute, value)
         @DB ||= Database.new.sqlite_db
         user = find(user_id)
@@ -88,6 +101,7 @@ class User
         return user
     end
 
+    # Return all users in the database as an array of User objects
     def self.all
         @DB ||= Database.new.sqlite_db
         query = <<~SQL
@@ -103,6 +117,7 @@ class User
         return users
     end
 
+    # Delete a user from the database with the given user_id
     def self.destroy(user_id)
         @DB ||= Database.new.sqlite_db
         query = <<~SQL
