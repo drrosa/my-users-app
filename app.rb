@@ -16,6 +16,13 @@ enable :sessions
 # curl -b cookies.txt -X DELETE localhost:8080/sign_out
 # curl -b cookies.txt -X DELETE localhost:8080/users
 
+get "/" do
+    @users = User.all.collect do |user|
+        User.to_hash(user)
+    end
+    erb :index, locals: { users_json: @users.to_json }
+end
+
 get "/users" do
     users = User.all.collect do |user|
         User.to_hash(user)
